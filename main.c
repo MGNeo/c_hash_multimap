@@ -92,70 +92,43 @@ void print_data_f(const void *const _data)
 
 int main(int argc, char **argv)
 {
-    // Создание хэш-мультиотображения.
-    c_hash_multimap *hash_multimap = c_hash_multimap_create(hash_key_s,
-                                                            hash_data_f,
-                                                            comp_key_s,
-                                                            comp_data_f,
-                                                            3,
-                                                            0.5f);
+    c_hash_multimap *hash_multimap;
 
-    // Вставка в хэш-мультиотображение нескольких элементов,
-    // в том числе и по одинаковому ключу.
-    const char *const key_a = "One";
-    const char *const key_b = "Two";
-    const char *const key_c = "Three";
-    float *data;
-
-    data = (float*)malloc(sizeof(float));
-    *data = 1.1f;
-    c_hash_multimap_insert(hash_multimap, key_a, data);
-
-    data = (float*)malloc(sizeof(float));
-    *data = 2.2f;
-    c_hash_multimap_insert(hash_multimap, key_a, data);
-
-    data = (float*)malloc(sizeof(float));
-    *data = 1.2f;
-    c_hash_multimap_insert(hash_multimap, key_b, data);
-
-    data = (float*)malloc(sizeof(float));
-    *data = 5.1f;
-
-    c_hash_multimap_insert(hash_multimap, key_c, data);
-    data = (float*)malloc(sizeof(float));
-    *data = 5.2f;
-    c_hash_multimap_insert(hash_multimap, key_c, data);
-
-    data = (float*)malloc(sizeof(float));
-    *data = 5.3f;
-    c_hash_multimap_insert(hash_multimap, key_c, data);
-
-    data = (float*)malloc(sizeof(float));
-    *data = 5.4f;
-    c_hash_multimap_insert(hash_multimap, key_c, data);
-
-    // Вывод содержимого хэш-мультиотображения.
-    c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
-    printf("\n");
-
-    // Получим адреса всех данных, которые связаны с ключем key_c.
-    void **datas = c_hash_multimap_at(hash_multimap, key_c);
-
-    // Увеличим данные на 0.5f.
-    for (size_t i = 0; datas[i] != NULL; ++i)
+    while(1)
     {
-        data = (float*) datas[i];
-        *data += 0.5f;
-    }
-    // Удалим массив с адресами.
-    free(datas);
-    // Вывод содержимого хэш-мультиотображения.
-    c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
-    printf("\n");
+        // Создание хэш-мультиотображения.
+        hash_multimap = c_hash_multimap_create(hash_key_s,
+                                               hash_data_f,
+                                               comp_key_s,
+                                               comp_data_f,
+                                               3,
+                                               0.5f);
 
-    // Удаление хэш-мультиотображения.
-    c_hash_multimap_delete(hash_multimap, NULL, del_data_f);
+        // Вставка по трем ключам (статичным) десяти (динамичных) данных.
+        const char *keys[] = {"One", "Two", "Three"};
+
+        for (size_t i = 0; i < 10; ++i)
+        {
+            // Выбираем случайный ключ.
+            const int key_index = rand() % 3;
+
+            // Делаем и инициализируем данные.
+            float *data = (float*)malloc(sizeof(float));
+            *data = i;
+
+            // Вставляем.
+            c_hash_multimap_insert(hash_multimap, keys[key_index], data);
+        }
+
+        // Покажем содержимое.
+        c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
+
+        // Удалим все элементы с заданным ключем.
+        c_hash_multimap_erase_all(hash_multimap, "Two", NULL, del_data_f);
+
+        // Удаление хэш-мультиотображения.
+        c_hash_multimap_delete(hash_multimap, NULL, del_data_f);
+    }
 
     getchar();
     return 0;

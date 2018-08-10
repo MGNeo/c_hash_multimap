@@ -29,7 +29,7 @@ ptrdiff_t c_hash_multimap_clear(c_hash_multimap *const _hash_multimap,
                                 void (*const _del_key)(void *const _key),
                                 void (*const _del_data)(void *const _data));
 
-/*ptrdiff_t c_hash_multimap_erase(c_hash_multimap *const _hash_multimap,
+ptrdiff_t c_hash_multimap_erase(c_hash_multimap *const _hash_multimap,
                                 const void *const _key,
                                 const void *const _data,
                                 void (*const _del_key)(void *const _key),
@@ -40,7 +40,7 @@ ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
                                     void (*const _del_key)(void *const _key),
                                     void (*const _del_data)(void *const _data));
 
-ptrdiff_t c_hash_multimap_check_key(const c_hash_multimap *const _hash_multimap,
+/*ptrdiff_t c_hash_multimap_check_key(const c_hash_multimap *const _hash_multimap,
                                     const void *const _key);
 
 ptrdiff_t c_hash_multimap_check(const c_hash_multimap *const _hash_map,

@@ -26,7 +26,7 @@ struct s_c_hash_multimap_node
     void *key;
     void *data;
 
-    size_t data_hash;
+    size_t d_hash;
 };
 
 // Цепочка нужна для оптимизации расхода памяти и количества операций.
@@ -35,7 +35,7 @@ struct s_c_hash_multimap_chain
     c_hash_multimap_chain *next_chain;
     c_hash_multimap_node *head;
 
-    size_t key_hash,
+    size_t k_hash,
            nodes_count;
 };
 
@@ -172,7 +172,7 @@ ptrdiff_t c_hash_multimap_clear(c_hash_multimap *const _hash_multimap,
         {
             // Перебираем все цепочки слота.
             c_hash_multimap_chain *select_chain = _hash_multimap->slots[s],
-                                      *delete_chain;
+                                  *delete_chain;
             while (select_chain != NULL)
             {
                 delete_chain = select_chain;
@@ -180,7 +180,7 @@ ptrdiff_t c_hash_multimap_clear(c_hash_multimap *const _hash_multimap,
 
                 // Перебираем все узлы цепочки.
                 c_hash_multimap_node *select_node = delete_chain->head,
-                                         *delete_node;
+                                     *delete_node;
                 while (select_node != NULL)
                 {
                     delete_node = select_node;
@@ -264,18 +264,18 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
     // Встраиваем данные в хэш-мультиотображение.
 
     // Неприведенный хэш ключа.
-    const size_t key_hash = _hash_multimap->hash_key(_key);
+    const size_t k_hash = _hash_multimap->hash_key(_key);
 
     // Приведенный хэш.
-    const size_t presented_key_hash = key_hash % _hash_multimap->slots_count;
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
 
     // Проходим по всем цепочкам слота, пытаясь найти, в какой из них хранятся данные с таким же ключом.
-    c_hash_multimap_chain *select_chain = _hash_multimap->slots[presented_key_hash];
+    c_hash_multimap_chain *select_chain = _hash_multimap->slots[presented_k_hash];
     while (select_chain != NULL)
     {
-        if (key_hash == select_chain->key_hash)
+        if (k_hash == select_chain->k_hash)
         {
-            if (_hash_multimap->comp_key(_key, select_chain->key_hash) > 0)
+            if (_hash_multimap->comp_key(_key, select_chain->head->key) > 0)
             {
                 break;
             }
@@ -296,9 +296,9 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
         }
 
         // Встраиваем цепочку в слот, делаем это сразу, чтобы дальнейший алгоритм вставки нового узла
-        // был описан единообразно как для уже существовавших цепочек, так и для вновь созданных.
-        new_chain->next_chain = _hash_multimap->slots[presented_key_hash];
-        _hash_multimap->slots[presented_key_hash] = new_chain;
+        // был описан единообразно как для уже существовавшей цепочки, так и для вновь созданной.
+        new_chain->next_chain = _hash_multimap->slots[presented_k_hash];
+        _hash_multimap->slots[presented_k_hash] = new_chain;
 
         // Установим параметры цепочки.
         new_chain->head = NULL;
@@ -324,7 +324,7 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
         if (created == 1)
         {
             // Вырезаем созданную цепочку из слота.
-            _hash_multimap->slots[presented_key_hash] = select_chain->next_chain;
+            _hash_multimap->slots[presented_k_hash] = select_chain->next_chain;
             // Освобождаем память из-под созданной цепочки.
             free(select_chain);
         }
@@ -342,12 +342,12 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
     new_node->data = (void*)_data;
 
     // Записываем в узел неприведенный хэш данных этого узла.
-    new_node->data_hash = _hash_multimap->hash_data(_data);
+    new_node->d_hash = _hash_multimap->hash_data(_data);
 
     // Если цепочка была создана, записываем в нее неприведенный хэш ключа.
     if (created == 1)
     {
-        select_chain->key_hash = _hash_multimap->hash_key(_key);
+        select_chain->k_hash = _hash_multimap->hash_key(_key);
     }
 
     // Узлов в цепочке стало больше.
@@ -373,8 +373,10 @@ ptrdiff_t c_hash_multimap_resize(c_hash_multimap *const _hash_multimap,
 
     if (_slots_count == _hash_multimap->slots_count) return 0;
 
+    // Если сзадано нулевое количество слотов.
     if (_slots_count == 0)
     {
+        // И если в хэш-мультимножестве есть цепочки.
         if (_hash_multimap->chains_count != 0)
         {
             return -2;
@@ -402,7 +404,7 @@ ptrdiff_t c_hash_multimap_resize(c_hash_multimap *const _hash_multimap,
 
         memset(new_slots, 0, new_slots_size);
 
-        // Если есть паки, которые необходимо перенести.
+        // Если есть цепочки, которые необходимо перенести.
         if (_hash_multimap->chains_count > 0)
         {
             size_t count = _hash_multimap->chains_count;
@@ -417,15 +419,15 @@ ptrdiff_t c_hash_multimap_resize(c_hash_multimap *const _hash_multimap,
                                           *relocate_chain;
                     while (select_chain != NULL)
                     {
-                        relocate_chaint = select_pack;
-                        select_pack = select_pack->next_pack;
+                        relocate_chain = select_chain;
+                        select_chain = select_chain->next_chain;
 
-                        // Хэш пака, приведенный к новому количеству слотов
-                        const size_t presented_hash_key = relocate_pack->hash % _slots_count;
+                        // Хэш цепочки, приведенный к новому количеству слотов.
+                        const size_t presented_k_hash = relocate_chain->k_hash % _slots_count;
 
-                        // Перенос пака.
-                        relocate_pack->next_pack = new_slots[presented_hash_key];
-                        new_slots[presented_hash_key] = relocate_pack;
+                        // Перенос цепочки из старого слота в новый.
+                        relocate_chain->next_chain = new_slots[presented_k_hash];
+                        new_slots[presented_k_hash] = relocate_chain;
 
                         --count;
                     }
@@ -434,6 +436,7 @@ ptrdiff_t c_hash_multimap_resize(c_hash_multimap *const _hash_multimap,
 
         }
 
+        // Освобождаем память из-под старых слотов.
         free(_hash_multimap->slots);
 
         // Используем новые слоты.
@@ -514,7 +517,7 @@ ptrdiff_t c_hash_multimap_erase(c_hash_multimap *const _hash_multimap,
 
     return 0;
 }
-
+*/
 // Удаляет из хэш-мультиотображения все данные, связанные с данным ключом (и ключ).
 // В случае успешного удаления возвращает > 0.
 // Если в хэш-мультиотображении нет заданного ключа, возвращает 0.
@@ -527,58 +530,74 @@ ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
     if (_hash_multimap == NULL) return -1;
     if (_key == NULL) return -2;
 
-    if (_hash_multimap->keys_count == 0) return 0;
+    if (_hash_multimap->chains_count == 0) return 0;
 
     // Неприведенный хэш искомого ключа.
-    const size_t hash = _hash_multimap->hash_key(_key);
+    const size_t k_hash = _hash_multimap->hash_key(_key);
 
-    // Приведенный хэш заданного ключа.
-    const size_t presented_hash = hash % _hash_multimap->slots_count;
+    // Приведенный хэш искомого ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
 
-    if (_hash_multimap->slots[presented_hash] != NULL)
+    // Если в заданном слоте есть цепочки.
+    if (_hash_multimap->slots[presented_k_hash] != NULL)
     {
-        c_hash_multimap_pack *select_pack = _hash_multimap->slots[presented_hash],
-                             *prev_pack = NULL;
-        while (select_pack != NULL)
+        // Обходим все цепочки слота, пытаясь найти ту, в которой хранятся данные с искомым ключом.
+        c_hash_multimap_chain *select_chain = _hash_multimap->slots[presented_k_hash],
+                              *prev_chain = NULL;
+        while (select_chain != NULL)
         {
-            if (hash == select_pack->hash)
+            // Если неприведенный хэш ключей совпал.
+            if (k_hash == select_chain->k_hash)
             {
-                if (_hash_multimap->comp_key(_key, select_pack->key) > 0)
+                // И вообще ключи оказались идентичными.
+                if (_hash_multimap->comp_key(_key, select_chain->k_hash) > 0)
                 {
-                    --_hash_multimap->keys_count;
-                    _hash_multimap->datas_count -= c_hash_multiset_nodes_count(select_pack->data);
+                    // Цепочек в хэш-мультиотображении стало меньше на одну.
+                    --_hash_multimap->chains_count;
+                    // Узлов в хэш-мультиотображении стало меньше на количество узлов, которые хранятся в удаляемой цепочке.
+                    _hash_multimap->nodes_count -= select_chain->nodes_count;
 
-                    // Удаляем множество данных пака.
-                    c_hash_multiset_delete(select_pack->data, _del_data);
-
-                    // Удаляем ключ.
-                    if (_del_key != NULL)
+                    // Проходим по всем узлам цепочки и удаляем их.
+                    c_hash_multimap_node *select_node = select_chain->head,
+                                         *delete_node;
+                    while (select_node != NULL)
                     {
-                        _del_key(select_pack->key);
-                    }
+                        delete_node = select_node;
+                        select_node = select_node->next_node;
 
+                        if (_del_key != NULL)
+                        {
+                            _del_key(delete_node->key);
+                        }
+
+                        if (_del_data != NULL)
+                        {
+                            _del_data(delete_node->data);
+                        }
+
+                        free(delete_node);
+                    }
+//Закончил тут.
                     // Сшиваем разрыв.
-                    if (prev_pack != NULL)
+                    if (prev_chain == NULL)
                     {
-                        prev_pack->next_pack = select_pack->next_pack;
+                        _hash_multimap->slots[presented_k_hash] = select_chain->next_chain;
                     } else {
-                        _hash_multimap->slots[presented_hash] = select_pack->next_pack;
+                        prev_chain->next_chain = select_chain->next_chain;
                     }
-
-                    free(select_pack);
 
                     return 1;
                 }
             }
 
-            prev_pack = select_pack;
-            select_pack = select_pack->next_pack;
+            prev_chain = select_chain;
+            select_chain = select_chain->next_chain;
         }
     }
 
     return 0;
 }
-
+/*
 // Проверка наличия в хэш-мультиотображении заданного ключа.
 // В случае наличия ключа возвращает > 0.
 // Если ключа нет, то возвращает 0.
@@ -691,7 +710,7 @@ ptrdiff_t c_hash_multimap_check_data(const c_hash_multimap *const _hash_multimap
 
     return 0;
 }
-
+*/
 // Проходит по всем элементам хэш-мультиотображения и выполняет над ними заданные действия.
 // В случае успешного выполнения возвращает > 0.
 // Если в хэш-мультиотображении нет элементов, возвращает 0.
@@ -704,28 +723,40 @@ ptrdiff_t c_hash_multimap_for_each(c_hash_multimap *const _hash_multimap,
     if (_action_key == NULL) return -2;
     if (_action_data == NULL) return -3;
 
-    if (_hash_multimap->keys_count == 0) return 0;
+    // Если цепочек нет, выходим.
+    if (_hash_multimap->chains_count == 0) return 0;
 
-    size_t count = _hash_multimap->keys_count;
+    // Обходим все слоты.
+    size_t count = _hash_multimap->chains_count;
     for (size_t s = 0; (s < _hash_multimap->slots_count)&&(count > 0); ++s)
     {
+        // Если в слоте есть цепочки.
         if (_hash_multimap->slots[s] != NULL)
         {
-            const c_hash_multimap_pack *select_pack = _hash_multimap->slots[s];
-            while (select_pack != NULL)
+            // Перебираем все цепочки.
+            const c_hash_multimap_chain *select_chain = _hash_multimap->slots[s];
+            while (select_chain != NULL)
             {
-                _action_key( select_pack->key );
-                c_hash_multiset_for_each(select_pack->data, _action_data);
+                // Перебираем все узлы цепочки.
+                c_hash_multimap_node *select_node = select_chain->head;
+                while (select_node != NULL)
+                {
+                    _action_key(select_node->key);
+                    _action_data(select_node->data);
 
-                select_pack = select_pack->next_pack;
+                    select_node = select_node->next_node;
+                }
+
+                select_chain = select_chain->next_chain;
                 --count;
             }
+
         }
     }
 
     return 1;
 }
-
+/*
 // Возвращает количество заданных данных, хранящихся в хэш-мультиотображении по заданному ключу.
 // В случае ошибки возвращает 0.
 size_t c_hash_multimap_count(const c_hash_multimap *const _hash_multimap,
@@ -879,11 +910,6 @@ void **c_hash_multimap_at(c_hash_multimap *const _hash_multimap,
 
                     // Маркер окончания массива.
                     datas[datas_count - 1] = NULL;
-
-// Делать ли c_hash_multimap работающим с использованием c_hash_multiset, или нет?
-// И если да, то как достучаться до сокрытых потрахов c_hash_multiset.
-// Пары ключ-значение вставляются в хэш-мультимножество как есть, ключи ДОЛЖНЫ "честно" дублироваться
-// Хэш-множество может работать, как хэш-отображение, если генерировать хэш не по всем данным, а по части.
 
                     // Обойдем все данные пака и занесем указатели на данные в массив datas.
                     size_t n = 0;
