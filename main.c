@@ -125,9 +125,10 @@ int main(int argc, char **argv)
 
         // Удалим все элементы с заданным ключем.
         c_hash_multimap_erase_all(hash_multimap, "Two", NULL, del_data_f);
+        */
 
         // Удаление хэш-мультиотображения.
-        c_hash_multimap_delete(hash_multimap, NULL, del_data_f);*/
+        c_hash_multimap_delete(hash_multimap, NULL, del_data_f);
     }
 
     getchar();

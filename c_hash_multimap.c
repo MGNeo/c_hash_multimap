@@ -327,9 +327,88 @@ ptrdiff_t c_hash_multimap_resize(c_hash_multimap *const _hash_multimap,
                     {
                         relocate_h_chain = select_h_chain;
                         select_h_chain = select_h_chain->next_h_chain;
+
+                        // Вычисляем хэш переносимой h-цепочки, приведенный к новому количеству слотов.
+                        const size_t presented_k_hash = relocate_h_chain->k_hash;
+
+                        // Переносим.
+                        relocate_h_chain->next_h_chain = new_slots[presented_k_hash];
+                        new_slots[presented_k_hash] = relocate_h_chain;
+
+                        --count;
                     }
                 }
             }
+
+        }
+
+        // Освобождаем память из-под старых слотов.
+        free(_hash_multimap->slots);
+
+        // Используем новые слоты.
+        _hash_multimap->slots = new_slots;
+        _hash_multimap->slots_count = _slots_count;
+
+        return 2;
+    }
+}
+
+// Вставляет в хэш-мультиотображение новый элемент (пара ключ-значение).
+// В случае успешной вставки возвращает > 0, ключ и данные захватываются хэш-мультиотображением.
+// В случае ошибки возвращает < 0, ключ и данные не захватываются хэш-мультиотображением.
+ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
+                                 const void *const _key,
+                                 const void *const _data)
+{
+    if (_hash_multimap == NULL)
+    {
+        return -1;
+    }
+    if (_key == NULL)
+    {
+        return -2;
+    }
+    if (_data == NULL)
+    {
+        return -3;
+    }
+
+    // Первым делом контролируем процесс увеличения количества слотов.
+
+    // Если слотов нет вообще.
+    if (_hash_multimap->slots_count == 0)
+    {
+        // Пытаемся расширить слоты.
+        if (c_hash_multimap_resize(_hash_multimap, C_HASH_MULTIMAP_0) <= 0)
+        {
+            return -4;
+        }
+    } else {
+        // Если слоты есть, то при достижении предела загруженности увеличиваем количество слотов.
+        const float load_factor = (float)_hash_multimap->h_chains_count / _hash_multimap->slots_count;
+        if (load_factor >= _hash_multimap->max_load_factor)
+        {
+            // Определим новое количество слотов.
+            size_t new_slots_count = (size_t)(_hash_multimap->slots_count * 1.75f);
+            // Контролируем переполнение.
+            if (new_slots_count < _hash_multimap->slots_count)
+            {
+                return -5;
+            }
+            new_slots_count += 1;
+            if (new_slots_count == 0)
+            {
+                return -6;
+            }
+
+            // Пытаемся расширить слоты.
+            if (c_hash_multimap_resize(_hash_multimap, new_slots_count) < 0)
+            {
+                return -7;
+            }
         }
     }
+    // Вставляем данные в хэш-мультимножество.
+
+    Тадыщ-бадыщь, свалил домой!
 }

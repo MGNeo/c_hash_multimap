@@ -25,4 +25,8 @@ ptrdiff_t c_hash_multimap_clear(c_hash_multimap *const _hash_multimap,
 ptrdiff_t c_hash_multimap_resize(c_hash_multimap *const _hash_multimap,
                                  const size_t _slots_count);
 
+ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
+                                 const void *const _key,
+                                 const void *const _data);
+
 #endif
