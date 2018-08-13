@@ -105,7 +105,7 @@ int main(int argc, char **argv)
                                                0.5f);
 
         // Вставка по трем ключам (статичным) десяти (динамичных) данных.
-        const char *keys[] = {"One", "Two", "Three"};
+        /*const char *keys[] = {"One", "Two", "Three"};
 
         for (size_t i = 0; i < 10; ++i)
         {
@@ -127,7 +127,7 @@ int main(int argc, char **argv)
         c_hash_multimap_erase_all(hash_multimap, "Two", NULL, del_data_f);
 
         // Удаление хэш-мультиотображения.
-        c_hash_multimap_delete(hash_multimap, NULL, del_data_f);
+        c_hash_multimap_delete(hash_multimap, NULL, del_data_f);*/
     }
 
     getchar();
