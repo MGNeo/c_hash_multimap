@@ -82,10 +82,10 @@ void print_key_s(const void *const _key)
 }
 
 // Функция печати данных-float.
-void print_data_f(const void *const _data)
+void print_data_f(void *const _data)
 {
     if (_data == NULL) return;
-    const float *const data = (float*)_data;
+    const float *const data = _data;
     printf("%f ", *data);
     return;
 }
@@ -101,11 +101,11 @@ int main(int argc, char **argv)
                                                hash_data_f,
                                                comp_key_s,
                                                comp_data_f,
-                                               3,
+                                               9,
                                                0.5f);
 
         // Вставка по трем ключам (статичным) десяти (динамичных) данных.
-        /*const char *keys[] = {"One", "Two", "Three"};
+        const char *keys[] = {"One", "Two", "Three"};
 
         for (size_t i = 0; i < 10; ++i)
         {
@@ -124,8 +124,8 @@ int main(int argc, char **argv)
         c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
 
         // Удалим все элементы с заданным ключем.
-        c_hash_multimap_erase_all(hash_multimap, "Two", NULL, del_data_f);
-        */
+        //c_hash_multimap_erase_all(hash_multimap, "Two", NULL, del_data_f);
+
 
         // Удаление хэш-мультиотображения.
         c_hash_multimap_delete(hash_multimap, NULL, del_data_f);
