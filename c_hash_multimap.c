@@ -184,64 +184,81 @@ ptrdiff_t c_hash_multimap_clear(c_hash_multimap *const _hash_multimap,
 
     // Пройдем по всем слотам.
     size_t count = _hash_multimap->h_chains_count;
-    for (size_t s = 0; (s < _hash_multimap->slots_count)&&(count > 0); ++s)
-    {
-        // Если в слоте есть h-цепочки.
-        if (_hash_multimap->slots[s] != NULL)
-        {
-            // Пройдем по всем h-цепочкам.
-            c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[s],
-                                    *delete_h_chain;
-            while (select_h_chain != NULL)
-            {
-                delete_h_chain = select_h_chain;
-                select_h_chain = select_h_chain->next_h_chain;
 
-                // Пройдем по всем k-цепочкам.
-                c_hash_multimap_k_chain *select_k_chain = delete_h_chain->head,
-                                        *delete_k_chain;
-                while (select_k_chain != NULL)
-                {
-                    delete_k_chain = select_k_chain;
-                    select_k_chain = select_k_chain->next_k_chain;
+    // Макросы дублирования кода для исключения проверок из циклов.
 
-                    // Пройдем по всем узлам k-цепочки.
-                    c_hash_multimap_node *select_node = delete_k_chain,
-                                         *delete_node;
-                    while (select_node != NULL)
-                    {
-                        delete_node = select_node;
+    // Открытие циклов.
+    #define C_HASH_MULTIMAP_CLEAR_BEGIN\
+    for (size_t s = 0; (s < _hash_multimap->slots_count)&&(count > 0); ++s)\
+    {\
+        if (_hash_multimap->slots[s] != NULL)\
+        {\
+            c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[s],\
+                                    *delete_h_chain;\
+            while (select_h_chain != NULL)\
+            {\
+                delete_h_chain = select_h_chain;\
+                select_h_chain = select_h_chain->next_h_chain;\
+                c_hash_multimap_k_chain *select_k_chain = delete_h_chain->head,\
+                                        *delete_k_chain;\
+                while (select_k_chain != NULL)\
+                {\
+                    delete_k_chain = select_k_chain;\
+                    select_k_chain = select_k_chain->next_k_chain;\
+                    c_hash_multimap_node *select_node = delete_k_chain,\
+                                         *delete_node;\
+                    while (select_node != NULL)\
+                    {\
+                        delete_node = select_node;\
                         select_node = select_node->next_node;
 
-                        // Если задана функция удаления ключа.
-                        if (_del_key != NULL)
-                        {
-                            _del_key(delete_node->key);
-                        }
+    // Закрытие циклов.
+    #define C_HASH_MULTIMAP_CLEAR_END\
+                        free(delete_node);\
+                    }\
+                    free(delete_k_chain);\
+                }\
+                free(delete_h_chain);\
+                --count;\
+            }\
+            _hash_multimap->slots[s] = NULL;\
+        }\
+    }
 
-                        // Если задана функция удаления данных.
-                        if (_del_data != NULL)
-                        {
-                            _del_data(delete_node->data);
-                        }
+    if (_del_key != NULL)
+    {
+        if (_del_data != NULL)
+        {
+            C_HASH_MULTIMAP_CLEAR_BEGIN
 
-                        // Удаляем узел.
-                        free(delete_node);
-                    }
+            _del_key(delete_node->key);
+            _del_data(delete_node->data);
 
-                    // Удаляем k-цепочку.
-                    free(delete_k_chain);
-                }
-                // Удаляем h-цепочку.
-                free(delete_h_chain);
+            C_HASH_MULTIMAP_CLEAR_END
+        } else {
+            C_HASH_MULTIMAP_CLEAR_BEGIN
 
-                --count;
-            }
+            _del_key(delete_node->key);
 
-            // Делаем в слоте отметку о том, что он пустой.
-            _hash_multimap->slots[s] = NULL;
+            C_HASH_MULTIMAP_CLEAR_END
+        }
+    } else {
+        if (_del_data != NULL)
+        {
+            C_HASH_MULTIMAP_CLEAR_BEGIN
+
+            _del_data(delete_node->data);
+
+            C_HASH_MULTIMAP_CLEAR_END
+        } else {
+            C_HASH_MULTIMAP_CLEAR_BEGIN
+
+            C_HASH_MULTIMAP_CLEAR_END
         }
     }
+
+    #undef C_HASH_MULTIMAP_CLEAR_BEGIN
+    #undef C_HASH_MULTIMAP_CLEAR_END
 
     // Обнуляем количество h-цепочек.
     _hash_multimap->h_chains_count = 0;
@@ -410,5 +427,30 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
     }
     // Вставляем данные в хэш-мультимножество.
 
-    Тадыщ-бадыщь, свалил домой!
+    // Неприведенный хэш ключа.
+    const size_t k_hash = _hash_multimap->hash_key(_key);
+
+    // Приведенный хэш ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
+
+    // Попытаемся найти в требуемом слоте h-цепочку с требуемым неприведенным хэшем ключа.
+    c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[presented_k_hash];
+    while (select_h_chain != NULL)
+    {
+        if (select_h_chain->k_hash == k_hash)
+        {
+            break;
+        }
+        select_h_chain = select_h_chain->head;
+    }
+
+    // Если найти h-цепочку с требуемым неприведенным хешем ключа не удалось, ее необходимо создать.
+    size_t created_h = 0;
+    if (select_h_chain == NULL)
+    {
+        created_h = 1;
+
+        // Пытаемся выделить память под h-цепочку.
+        c_hash_multimap_h_chain *const new_h_chain = (c_hash_multimap_h_chain*)malloc(sizeof());
+    }
 }
