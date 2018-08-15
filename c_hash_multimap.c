@@ -565,6 +565,133 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
     return 1;
 }
 
+// Удаляет из хэш-мультиотображения все пары с заданным ключом.
+// В случае успешного удаления возвращает > 0.
+// Если пар с заданным ключом в хэш-мультиотображении не оказалось, возвращает 0.
+// В случае ошибки возвращает < 0.
+ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
+                                    const void *const _key,
+                                    void (*const _del_key)(void *const _key),
+                                    void (*const _del_data)(void *const _data))
+{
+    if (_hash_multimap == NULL)
+    {
+        return -1;
+    }
+
+    if (_key == NULL)
+    {
+        return -2;
+    }
+
+    if (_hash_multimap->nodes_count == 0)
+    {
+        return 0;
+    }
+
+    // Неприведенный хэш ключа.
+    const size_t k_hash = _hash_multimap->hash_key(_key);
+
+    // Приведенный хэш ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
+    // Если в нужном слоте имеются h-цепочки.
+    if (_hash_multimap->slots[presented_k_hash] != NULL)
+    {
+
+        // Макросы дублирования кода для исключения проверок из циклов.
+
+        // Открытие цикла.
+        #define C_HASH_MULTIMAP_ERASE_ALL_BEGIN\
+        c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[presented_k_hash],\
+                                *prev_h_chain = NULL;\
+        while (select_h_chain != NULL)\
+        {\
+            if (select_h_chain->k_hash == k_hash)\
+            {\
+                c_hash_multimap_k_chain *select_k_chain = select_h_chain->head;\
+                while (select_k_chain != NULL)\
+                {\
+                    if (_hash_multimap->comp_key(select_k_chain->head->key, _key) > 0)\
+                    {\
+                        c_hash_multimap_node *select_node = select_k_chain->head,\
+                                             *delete_node;\
+                        while (select_node != NULL)\
+                        {\
+                            delete_node = select_node;\
+                            select_node = select_node->next_node;
+
+        // Закрытие цикла.
+        #define C_HASH_MULTIMAP_ERASE_ALL_END\
+                            free(delete_node);\
+                        }\
+                        select_h_chain->head = select_k_chain->next_k_chain;\
+                        --select_h_chain->k_chains_count;\
+                        --_hash_multimap->k_chains_count;\
+                        _hash_multimap->nodes_count -= select_k_chain->nodes_count;\
+                        free(select_k_chain);\
+                        if (select_h_chain->k_chains_count == 0)\
+                        {\
+                            if (prev_h_chain == NULL)\
+                            {\
+                                _hash_multimap->slots[presented_k_hash] = select_h_chain->next_h_chain;\
+                            } else {\
+                                prev_h_chain->next_h_chain = select_h_chain->next_h_chain;\
+                            }\
+                            --_hash_multimap->h_chains_count;\
+                            free(select_h_chain);\
+                        }\
+                        return 1;\
+                    }\
+                    select_k_chain = select_k_chain->next_k_chain;\
+                }\
+            }\
+            prev_h_chain = select_h_chain;\
+            select_h_chain = select_h_chain->next_h_chain;\
+        }
+
+        if (_del_key != NULL)
+        {
+            if (_del_data != NULL)
+            {
+                // Заданы функции удаления и для ключа, и для данных.
+                C_HASH_MULTIMAP_ERASE_ALL_BEGIN
+
+                _del_key(delete_node->key);
+                _del_data(delete_node->data);
+
+                C_HASH_MULTIMAP_ERASE_ALL_END
+            } else {
+                // Функция удаления задана только для ключа.
+                C_HASH_MULTIMAP_ERASE_ALL_BEGIN
+
+                _del_key(delete_node->key);
+
+                C_HASH_MULTIMAP_ERASE_ALL_END
+            }
+        } else {
+            if (_del_data != NULL)
+            {
+                // Функция удаления задана только для данных.
+                C_HASH_MULTIMAP_ERASE_ALL_BEGIN
+
+                _del_data(delete_node->data);
+
+                C_HASH_MULTIMAP_ERASE_ALL_END
+            } else {
+                // Функции удаления не заданы ни для ключа, ни для данных.
+                C_HASH_MULTIMAP_ERASE_ALL_BEGIN
+
+                C_HASH_MULTIMAP_ERASE_ALL_END
+            }
+        }
+
+        #undef C_HASH_MULTIMAP_ERASE_ALL_BEGIN
+        #undef C_HASH_MULTIMAP_ERASE_ALL_END
+    }
+
+    return 0;
+}
+
 // Обход всеъ пар хэш-мультиотображения и выполнение над ключами и данными пар заданных действий.
 // Должно быть задано действие хотя бы для ключа, или хотя бы для данных.
 // Ключи нельзя удалять и менять.

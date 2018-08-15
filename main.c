@@ -131,6 +131,12 @@ int main(int argc, char **argv)
         // Покажем содержимое.
         c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
 
+        // Удалим все пары с определенным ключом.
+        c_hash_multimap_erase_all(hash_multimap, "One", NULL, del_data_f);
+        printf("\n");
+
+        // Покажем содержимое.
+        c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
 
         // Удалим все элементы с заданным ключем.
         //c_hash_multimap_erase_all(hash_multimap, "Two", NULL, del_data_f);
