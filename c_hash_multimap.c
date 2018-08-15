@@ -182,22 +182,27 @@ ptrdiff_t c_hash_multimap_clear(c_hash_multimap *const _hash_multimap,
 
     // Открытие циклов.
     #define C_HASH_MULTIMAP_CLEAR_BEGIN\
+    /* Обойдем слоты */\
     for (size_t s = 0; (s < _hash_multimap->slots_count)&&(count > 0); ++s)\
     {\
+        /* Если в слоте есть h-цепочки */\
         if (_hash_multimap->slots[s] != NULL)\
         {\
+            /* Обойдем все h-цепочки слота */\
             c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[s],\
                                     *delete_h_chain;\
             while (select_h_chain != NULL)\
             {\
                 delete_h_chain = select_h_chain;\
                 select_h_chain = select_h_chain->next_h_chain;\
+                /* Обойдем все k-цепочки */\
                 c_hash_multimap_k_chain *select_k_chain = delete_h_chain->head,\
                                         *delete_k_chain;\
                 while (select_k_chain != NULL)\
                 {\
                     delete_k_chain = select_k_chain;\
                     select_k_chain = select_k_chain->next_k_chain;\
+                    /* Обойдем все узлы в k-цепочке */\
                     c_hash_multimap_node *select_node = delete_k_chain->head,\
                                          *delete_node;\
                     while (select_node != NULL)\
@@ -602,17 +607,21 @@ ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
 
         // Открытие цикла.
         #define C_HASH_MULTIMAP_ERASE_ALL_BEGIN\
+        /* Обойдем все h-цепочки слота */\
         c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[presented_k_hash],\
                                 *prev_h_chain = NULL;\
         while (select_h_chain != NULL)\
         {\
+            /* Если неприведенный хэш h-цепочки совпал с неприведенным хэшем искомого ключа */\
             if (select_h_chain->k_hash == k_hash)\
             {\
+                /* Обойдем k-цепочки в поисках такой, которая хранит узлы с искомым ключом */\
                 c_hash_multimap_k_chain *select_k_chain = select_h_chain->head;\
                 while (select_k_chain != NULL)\
                 {\
                     if (_hash_multimap->comp_key(select_k_chain->head->key, _key) > 0)\
                     {\
+                        /* Обойдем и удалим все узлы k-цепочки */\
                         c_hash_multimap_node *select_node = select_k_chain->head,\
                                              *delete_node;\
                         while (select_node != NULL)\
@@ -624,11 +633,16 @@ ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
         #define C_HASH_MULTIMAP_ERASE_ALL_END\
                             free(delete_node);\
                         }\
+                        /* Ампутируем удаляемую k-цепочку из выделенной h-цепочки */\
                         select_h_chain->head = select_k_chain->next_k_chain;\
+                        /* Уменьшим счетчик k-цепочек в h-цепочке */\
                         --select_h_chain->k_chains_count;\
+                        /* Уменьшим счетчик k-цепочек в хэш-мультиотображении */\
                         --_hash_multimap->k_chains_count;\
+                        /* Уменьшим количество узлов в хэш-мультиотображении на количество узлов в удаляемой k-цепочки */\
                         _hash_multimap->nodes_count -= select_k_chain->nodes_count;\
                         free(select_k_chain);\
+                        /* Если h-цепочка опустела, ампутируем ее из слота */\
                         if (select_h_chain->k_chains_count == 0)\
                         {\
                             if (prev_h_chain == NULL)\
@@ -735,7 +749,7 @@ ptrdiff_t c_hash_multimap_for_each(c_hash_multimap *const _hash_multimap,
 
     // Закрытие циклов.
     #define C_HASH_MULTIMAP_FOR_EACH_END\
-    select_node = select_node->next_node;\
+                        select_node = select_node->next_node;\
                         --count;\
                     }\
                     select_k_chain = select_k_chain->next_k_chain;\
