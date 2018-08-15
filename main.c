@@ -20,14 +20,6 @@ size_t hash_key_s(const void *const _key)
     return hash;
 }
 
-// Функция генерации хэша по данным-float.
-size_t hash_data_f(const void *const _data)
-{
-    if (_data == NULL) return 0;
-    const float *const data = (float*)_data;
-    return (size_t)( (*data) * 100 );
-}
-
 // Функция детального сравнения ключей-строк.
 size_t comp_key_s(const void *const _key_a,
                   const void *const _key_b)
@@ -90,6 +82,16 @@ void print_data_f(void *const _data)
     return;
 }
 
+// Функция увеличения данных-float на 1.f
+void inc_data_f(void *const _data)
+{
+    if (_data == NULL) return;
+
+    float *const data = _data;
+    *data += 1.f;
+    return;
+}
+
 int main(int argc, char **argv)
 {
     c_hash_multimap *hash_multimap;
@@ -98,7 +100,6 @@ int main(int argc, char **argv)
     {
         // Создание хэш-мультиотображения.
         hash_multimap = c_hash_multimap_create(hash_key_s,
-                                               hash_data_f,
                                                comp_key_s,
                                                comp_data_f,
                                                9,
@@ -123,12 +124,23 @@ int main(int argc, char **argv)
         // Покажем содержимое.
         c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
 
+        // Увеличим данные всех пар на 1.f.
+        c_hash_multimap_for_each(hash_multimap, NULL, inc_data_f);
+        printf("\n");
+
+        // Покажем содержимое.
+        c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
+
+
         // Удалим все элементы с заданным ключем.
         //c_hash_multimap_erase_all(hash_multimap, "Two", NULL, del_data_f);
 
 
         // Удаление хэш-мультиотображения.
         c_hash_multimap_delete(hash_multimap, NULL, del_data_f);
+
+        printf("\n");
+        getchar();
     }
 
     getchar();

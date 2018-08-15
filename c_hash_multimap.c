@@ -27,8 +27,6 @@ struct s_c_hash_multimap_node
 
     void *key;
     void *data;
-
-    size_t d_hash;
 };
 
 struct s_c_hash_multimap_k_chain
@@ -52,8 +50,6 @@ struct s_c_hash_multimap
 {
     // Функция генерации хэша по ключу.
     size_t (*hash_key)(const void *const _key);
-    // Функция генерации хэша по данным.
-    size_t (*hash_data)(const void *const _data);
 
     // Функция детального сравнения ключей.
     // В случае идентичности ключей должна возвращать > 0.
@@ -80,7 +76,6 @@ struct s_c_hash_multimap
 // В случае успеха возвращает указатель на созданное хэш-мультиотображение.
 // В случае ошибки возвращает NULL.
 c_hash_multimap *c_hash_multimap_create(size_t (*const _hash_key)(const void *const _key),
-                                        size_t (*const _hash_data)(const void *const _data),
                                         size_t (*const _comp_key)(const void *const _key_a,
                                                                   const void *const _key_b),
                                         size_t (*const _comp_data)(const void *const _data_a,
@@ -89,7 +84,6 @@ c_hash_multimap *c_hash_multimap_create(size_t (*const _hash_key)(const void *co
                                         const float _max_load_factor)
 {
     if (_hash_key == NULL) return NULL;
-    if (_hash_data == NULL) return NULL;
 
     if (_comp_key == NULL) return NULL;
     if (_comp_data == NULL) return NULL;
@@ -128,7 +122,6 @@ c_hash_multimap *c_hash_multimap_create(size_t (*const _hash_key)(const void *co
     }
 
     new_hash_multimap->hash_key = _hash_key;
-    new_hash_multimap->hash_data = _hash_data;
     new_hash_multimap->comp_key = _comp_key;
     new_hash_multimap->comp_data = _comp_data;
 
@@ -561,8 +554,6 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
     // Узел захватывает ключ и данные.
     new_node->key = (void*)_key;
     new_node->data = (void*)_data;
-    // Записываем в узел хэш данных.
-    new_node->d_hash = _hash_multimap->hash_data(_data);
     // Встраиваем узел в выделенную k-цепочку.
     new_node->next_node = select_k_chain->head;
     select_k_chain->head = new_node;
@@ -635,11 +626,6 @@ ptrdiff_t c_hash_multimap_for_each(c_hash_multimap *const _hash_multimap,
         _action_key(select_node->key);
         _action_data(select_node->data);
 
-        // Пересчитываем хэш данных, вдруг они изменились...
-        // А если не именились?..
-        Пустые операции...
-        select_node->d_hash = _hash_multimap->hash_data(select_node->data);
-
         C_HASH_MULTIMAP_FOR_EACH_END
     } else {
         // Задано действие только для ключа.
@@ -653,8 +639,8 @@ ptrdiff_t c_hash_multimap_for_each(c_hash_multimap *const _hash_multimap,
         } else {
             // Задано действие только для данных.
             C_HASH_MULTIMAP_FOR_EACH_BEGIN
+
             _action_data(select_node->data);
-            select_node->data = _hash_multimap->hash_data(select_node->data);
 
             C_HASH_MULTIMAP_FOR_EACH_END
         }

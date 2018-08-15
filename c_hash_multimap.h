@@ -6,7 +6,6 @@
 typedef struct s_c_hash_multimap c_hash_multimap;
 
 c_hash_multimap *c_hash_multimap_create(size_t (*const _hash_key)(const void *const _key),
-                                        size_t (*const _hash_data)(const void *const _data),
                                         size_t (*const _comp_key)(const void *const _key_a,
                                                                   const void *const _key_b),
                                         size_t (*const _comp_data)(const void *const _data_a,
