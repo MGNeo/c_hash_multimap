@@ -56,4 +56,13 @@ ptrdiff_t c_hash_multimap_check_pair(const c_hash_multimap *const _hash_multimap
 size_t c_hash_multimap_count_pair(const c_hash_multimap *const _hash_multimap,
                                   const void *const _key,
                                   const void *const _data);
+
+size_t c_hash_multimap_slots_count(const c_hash_multimap *const _hash_multimap);
+
+size_t c_hash_multimap_h_chains_count(const c_hash_multimap *const _hash_multimap);
+
+size_t c_hash_multimap_k_chains_count(const c_hash_multimap *const _hash_multimap);
+
+size_t c_hash_multimap_nodes_count(const c_hash_multimap *const _hash_multimap);
+
 #endif

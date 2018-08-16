@@ -1171,3 +1171,51 @@ size_t c_hash_multimap_count_pair(const c_hash_multimap *const _hash_multimap,
 
     return 0;
 }
+
+// Возвращает количество слотов хэш-мультиотображения.
+// В случае ошибки возвращает 0.
+size_t c_hash_multimap_slots_count(const c_hash_multimap *const _hash_multimap)
+{
+    if (_hash_multimap == NULL)
+    {
+        return 0;
+    }
+
+    return _hash_multimap->slots_count;
+}
+
+// Возвращает количество h-цепочек в хэш-мультимножестве.
+// В случае ошибки возвращает 0.
+size_t c_hash_multimap_h_chains_count(const c_hash_multimap *const _hash_multimap)
+{
+    if (_hash_multimap == NULL)
+    {
+        return 0;
+    }
+
+    return _hash_multimap->h_chains_count;
+}
+
+// Возвращает количество k-цепочек в хэш-мультимножестве.
+// В случае ошибки возвращает 0.
+size_t c_hash_multimap_k_chains_count(const c_hash_multimap *const _hash_multimap)
+{
+    if (_hash_multimap == NULL)
+    {
+        return 0;
+    }
+
+    return _hash_multimap->k_chains_count;
+}
+
+// Возвращает количество узлов в хэш-мультимножестве.
+// В случае ошибки возвращает 0.
+size_t c_hash_multimap_nodes_count(const c_hash_multimap *const _hash_multimap)
+{
+    if (_hash_multimap == NULL)
+    {
+        return 0;
+    }
+
+    return _hash_multimap->nodes_count;
+}
