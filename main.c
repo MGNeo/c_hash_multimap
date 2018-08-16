@@ -69,7 +69,7 @@ void print_key_s(const void *const _key)
 {
     if (_key == NULL) return;
     const char *const key = (char*)_key;
-    printf("\nkey[%s]: ", key);
+    printf("[%s]: ", key);
     return;
 }
 
@@ -78,7 +78,7 @@ void print_data_f(void *const _data)
 {
     if (_data == NULL) return;
     const float *const data = _data;
-    printf("%f ", *data);
+    printf("%f \n", *data);
     return;
 }
 
@@ -140,12 +140,33 @@ int main(int argc, char **argv)
         printf("\n");
 
         // Удалим одну пару, ключ которой равен "Two", а данные 8.f.
-        float d = 8.f;
-        c_hash_multimap_erase(hash_multimap, "Two", &d, NULL, del_data_f);
+        float h_data = 8.f;
+        c_hash_multimap_erase(hash_multimap, "Two", &h_data, NULL, del_data_f);
 
         // Покажем содержимое.
         c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
         printf("\n");
+
+        // Проверим наличие каждого ключа в хэш-мультиотображении.
+        // А так же количество пар с каждым ключом.
+        for (size_t k = 0; k < 3; ++k)
+        {
+            const ptrdiff_t have = c_hash_multimap_check_key(hash_multimap, keys[k]);
+            const size_t count = c_hash_multimap_count_key(hash_multimap, keys[k]);
+            printf("[%s], have/count: %Id/%Iu\n", keys[k], have, count);
+        }
+        printf("\n");
+
+        // Проверим наличие и количество определенных пар в хэш-мультиотображении.
+        for (size_t k = 0; k < 3; ++k)
+        {
+            for (float d = 0.f; d < 10.f; d += 1.f)
+            {
+                const ptrdiff_t have = c_hash_multimap_check_pair(hash_multimap, keys[k], &d);
+                const size_t count = c_hash_multimap_count_pair(hash_multimap, keys[k], &d);
+                printf("[%s, %f], have/count: %Id/%Iu\n", keys[k], d, have, count);
+            }
+        }
 
         // Удаление хэш-мультиотображения.
         c_hash_multimap_delete(hash_multimap, NULL, del_data_f);
@@ -157,3 +178,4 @@ int main(int argc, char **argv)
     getchar();
     return 0;
 }
+
