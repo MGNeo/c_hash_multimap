@@ -1042,7 +1042,7 @@ size_t c_hash_multimap_count_key(const c_hash_multimap *const _hash_multimap,
 }
 
 // Проверка наличия заданной пары в хэш-мультиотображении.
-// В случае наличии пары возвращает > 0.
+// В случае наличия пары возвращает > 0.
 // В случае отсутствия пары возвращает 0.
 // В случае ошибки возвращает < 0.
 ptrdiff_t c_hash_multimap_check_pair(const c_hash_multimap *const _hash_multimap,
