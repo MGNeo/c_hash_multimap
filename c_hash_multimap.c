@@ -570,6 +570,151 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
     return 1;
 }
 
+// Удаляет заданную пару из хэш-мультиотображения.
+// В случае успещного удаления возвращает > 0.
+// Если такой пары нет, возвращает 0.
+// В случае ошибки возвращает < 0.
+ptrdiff_t c_hash_multimap_erase(c_hash_multimap *const _hash_multimap,
+                                const void *const _key,
+                                const void *const _data,
+                                void (*const _del_key)(void *const _key),
+                                void (*const _del_data)(void *const _data))
+{
+    if (_hash_multimap == NULL)
+    {
+        return -1;
+    }
+    if (_key == NULL)
+    {
+        return -2;
+    }
+    if (_data == NULL)
+    {
+        return -3;
+    }
+
+    if (_hash_multimap->nodes_count == 0)
+    {
+        return 0;
+    }
+
+    // Неприведенный хэш искомого ключа.
+    const size_t k_hash = _hash_multimap->hash_key(_key);
+
+    // Приведенный хэш искомого ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
+
+    if (_hash_multimap->slots[presented_k_hash] != NULL)
+    {
+        // Перебираем h-цепочки слота.
+        c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[presented_k_hash],
+                                *prev_h_chain = NULL;
+        while (select_h_chain != NULL)
+        {
+            if (select_h_chain->k_hash == k_hash)
+            {
+                // Перебираем k-цепочки.
+                c_hash_multimap_k_chain *select_k_chain = select_h_chain->head,
+                                        *prev_k_chain = NULL;
+                while (select_k_chain != NULL)
+                {
+                    if (_hash_multimap->comp_key(select_k_chain->head->key, _key) > 0)
+                    {
+                        // Нашли k-цепочку, которая содержит узлы с заданным ключем.
+
+                        // Перебираем узлы в поисках нужной пары.
+                        c_hash_multimap_node *select_node = select_k_chain->head,
+                                             *prev_node = NULL;
+                        while (select_node != NULL)
+                        {
+                            if (_hash_multimap->comp_data(select_node->data, _data) > 0)
+                            {
+                                // Нашли нужную пару, вырезаем ее.
+
+                                // Ампутация.
+                                if (prev_node == NULL)
+                                {
+                                    select_k_chain->head = select_node->next_node;
+                                } else {
+                                    prev_node->next_node = select_node->next_node;
+                                }
+
+                                // Уменьшаем счетчик узлов выделенной k-цепочки.
+                                --select_k_chain->nodes_count;
+                                // Уменьшаем счетчик узлов хэш-мультиотображения.
+                                --_hash_multimap->nodes_count;
+
+                                // Если задана функция удаления для ключа.
+                                if (_del_key != NULL)
+                                {
+                                    _del_key(select_node->key);
+                                }
+
+                                // Если задана функция удаления для данных.
+                                if (_del_data != NULL)
+                                {
+                                    _del_data(select_node->data);
+                                }
+
+                                // Освобождаем память из-под узла.
+                                free(select_node);
+
+                                // Если k-цепочка опустела, удаляем ее.
+                                if (select_k_chain->nodes_count == 0)
+                                {
+                                    // Ампутация.
+                                    if (prev_k_chain == NULL)
+                                    {
+                                        select_h_chain->head = select_k_chain->next_k_chain;
+                                    } else {
+                                        prev_k_chain->next_k_chain = select_k_chain->next_k_chain;
+                                    }
+
+                                    // Уменьшаем счетчик k-цепочек в h-цепочке.
+                                    --select_h_chain->k_chains_count;
+                                    // Уменьшаем счетчик k-цепочек в хэш-мультиотображении.
+                                    --_hash_multimap->k_chains_count;
+
+                                    // Освобождаем память из-под k-цепочки.
+                                    free(select_k_chain);
+
+                                    // Если h-цепочка опустела, удаляем ее.
+                                    if (select_h_chain->k_chains_count == 0)
+                                    {
+                                        // Ампутация.
+                                        if (prev_h_chain == NULL)
+                                        {
+                                            _hash_multimap->slots[presented_k_hash] = select_h_chain->next_h_chain;
+                                        } else {
+                                            prev_h_chain->next_h_chain = select_h_chain->next_h_chain;
+                                        }
+
+                                        // Уменьшаем счетчик h-цепочек в хэш-мультиотображении.
+                                        --_hash_multimap->h_chains_count;
+
+                                        // Освобождаем память из-под h-цепочки.
+                                        free(select_h_chain);
+                                    }
+                                }
+
+                                return 1;
+                            }
+
+                            prev_node = select_node;
+                            select_node = select_node->next_node;
+                        }
+                    }
+                    prev_k_chain = select_k_chain;
+                    select_k_chain = select_k_chain->next_k_chain;
+                }
+            }
+            prev_h_chain = select_h_chain;
+            select_h_chain = select_h_chain->next_h_chain;
+        }
+    }
+    return 0;
+}
+
 // Удаляет из хэш-мультиотображения все пары с заданным ключом.
 // В случае успешного удаления возвращает > 0.
 // Если пар с заданным ключом в хэш-мультиотображении не оказалось, возвращает 0.
@@ -645,6 +790,7 @@ ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
                         /* Если h-цепочка опустела, ампутируем ее из слота */\
                         if (select_h_chain->k_chains_count == 0)\
                         {\
+                            /* Сшиваем разрыв */\
                             if (prev_h_chain == NULL)\
                             {\
                                 _hash_multimap->slots[presented_k_hash] = select_h_chain->next_h_chain;\

@@ -111,7 +111,7 @@ int main(int argc, char **argv)
         for (size_t i = 0; i < 10; ++i)
         {
             // Выбираем случайный ключ.
-            const int key_index = rand() % 3;
+            const int key_index = i % 3;
 
             // Делаем и инициализируем данные.
             float *data = (float*)malloc(sizeof(float));
@@ -123,24 +123,29 @@ int main(int argc, char **argv)
 
         // Покажем содержимое.
         c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
+        printf("\n");
 
         // Увеличим данные всех пар на 1.f.
         c_hash_multimap_for_each(hash_multimap, NULL, inc_data_f);
-        printf("\n");
 
         // Покажем содержимое.
         c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
+        printf("\n");
 
         // Удалим все пары с определенным ключом.
         c_hash_multimap_erase_all(hash_multimap, "One", NULL, del_data_f);
-        printf("\n");
 
         // Покажем содержимое.
         c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
+        printf("\n");
 
-        // Удалим все элементы с заданным ключем.
-        //c_hash_multimap_erase_all(hash_multimap, "Two", NULL, del_data_f);
+        // Удалим одну пару, ключ которой равен "Two", а данные 8.f.
+        float d = 8.f;
+        c_hash_multimap_erase(hash_multimap, "Two", &d, NULL, del_data_f);
 
+        // Покажем содержимое.
+        c_hash_multimap_for_each(hash_multimap, print_key_s, print_data_f);
+        printf("\n");
 
         // Удаление хэш-мультиотображения.
         c_hash_multimap_delete(hash_multimap, NULL, del_data_f);

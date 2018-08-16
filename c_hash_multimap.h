@@ -28,6 +28,12 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
                                  const void *const _key,
                                  const void *const _data);
 
+ptrdiff_t c_hash_multimap_erase(c_hash_multimap *const _hash_multimap,
+                                const void *const _key,
+                                const void *const _data,
+                                void (*const _del_key)(void *const _key),
+                                void (*const _del_data)(void *const _data));
+
 ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
                                     const void *const _key,
                                     void (*const _del_key)(void *const _key),
