@@ -938,3 +938,236 @@ ptrdiff_t c_hash_multimap_for_each(c_hash_multimap *const _hash_multimap,
 
     return 1;
 }
+
+// Проверяет, есть ли такой ключ в хэш-мультиотображении.
+// Если есть, возвращает > 0.
+// Если нет, возвращает 0.
+// В случае ошибки возвращает < 0.
+ptrdiff_t c_hash_multimap_check_key(const c_hash_multimap *const _hash_multimap,
+                                    const void *const _key)
+{
+    if (_hash_multimap == NULL)
+    {
+        return -1;
+    }
+    if (_key == NULL)
+    {
+        return -2;
+    }
+
+    if (_hash_multimap->nodes_count == 0)
+    {
+        return 0;
+    }
+
+    // Неприведенный хэш искомого ключа.
+    const size_t k_hash = _hash_multimap->hash_key(_key);
+
+    // Приведенный хэш искомого ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
+
+    if (_hash_multimap->slots[presented_k_hash] != NULL)
+    {
+        // Перебираем h-цепочки слота.
+        const c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[presented_k_hash];
+        while (select_h_chain != NULL)
+        {
+            if (select_h_chain->k_hash == k_hash)
+            {
+                // Перебираем k-цепочки.
+                const c_hash_multimap_k_chain *select_k_chain = select_h_chain->head;
+                while (select_k_chain != NULL)
+                {
+                    if (_hash_multimap->comp_key(select_k_chain->head->key, _key) > 0)
+                    {
+                        return 1;
+                    }
+                    select_k_chain = select_k_chain->next_k_chain;
+                }
+            }
+            select_h_chain = select_h_chain->next_h_chain;
+        }
+    }
+    return 0;
+}
+
+// Возвращает количество пар с заданным ключом в хэш-мультиотображении.
+// В случае ошибки возвращает 0.
+size_t c_hash_multimap_count_key(const c_hash_multimap *const _hash_multimap,
+                                 const void *const _key)
+{
+    if (_hash_multimap == NULL)
+    {
+        return 0;
+    }
+    if (_key == NULL)
+    {
+        return 0;
+    }
+
+    if (_hash_multimap->nodes_count == 0)
+    {
+        return 0;
+    }
+
+    // Неприведенный хэш искомого ключа.
+    const size_t k_hash = _hash_multimap->hash_key(_key);
+
+    // Приведенный хэш искомого ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
+
+    if (_hash_multimap->slots[presented_k_hash] != NULL)
+    {
+        // Перебираем h-цепочки слота.
+        const c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[presented_k_hash];
+        while (select_h_chain != NULL)
+        {
+            if (select_h_chain->k_hash == k_hash)
+            {
+                // Перебираем k-цепочки.
+                const c_hash_multimap_k_chain *select_k_chain = select_h_chain->head;
+                while (select_k_chain != NULL)
+                {
+                    if (_hash_multimap->comp_key(select_k_chain->head->key, _key) > 0)
+                    {
+                        return select_k_chain->nodes_count;
+                    }
+                    select_k_chain = select_k_chain->next_k_chain;
+                }
+            }
+            select_h_chain = select_h_chain->next_h_chain;
+        }
+    }
+    return 0;
+}
+
+// Проверка наличия заданной пары в хэш-мультиотображении.
+// В случае наличии пары возвращает > 0.
+// В случае отсутствия пары возвращает 0.
+// В случае ошибки возвращает < 0.
+ptrdiff_t c_hash_multimap_check_pair(const c_hash_multimap *const _hash_multimap,
+                                     const void *const _key,
+                                     const void *const _data)
+{
+    if (_hash_multimap == NULL)
+    {
+        return -1;
+    }
+    if (_key == NULL)
+    {
+        return -2;
+    }
+    if (_data == NULL)
+    {
+        return -3;
+    }
+
+    if (_hash_multimap->nodes_count == 0)
+    {
+        return 0;
+    }
+
+    // Неприведенный хэш искомого ключа.
+    const size_t k_hash = _hash_multimap->hash_key(_key);
+
+    // Приведенный хэш искомого ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
+
+    if (_hash_multimap->slots[presented_k_hash] != NULL)
+    {
+        // Перебираем h-цепочки слота.
+        const c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[presented_k_hash];
+        while (select_h_chain != NULL)
+        {
+            if (select_h_chain->k_hash == k_hash)
+            {
+                // Перебираем k-цепочки.
+                const c_hash_multimap_k_chain *select_k_chain = select_h_chain->head;
+                while (select_k_chain != NULL)
+                {
+                    if (_hash_multimap->comp_key(select_k_chain->head->key, _key) > 0)
+                    {
+                        // Перебираем узлы k-цепочки.
+                        const c_hash_multimap_node *select_node = select_k_chain->head;
+                        while (select_node != NULL)
+                        {
+                            if (_hash_multimap->comp_data(select_node->data, _data) > 0)
+                            {
+                                return 1;
+                            }
+                            select_node = select_node->next_node;
+                        }
+                    }
+                    select_k_chain = select_k_chain->next_k_chain;
+                }
+
+            }
+            select_h_chain = select_h_chain->next_h_chain;
+        }
+    }
+    return 0;
+}
+
+// Возвращает количество пар с заданным ключем и данными.
+// В случае ошибки возвращает 0.
+size_t c_hash_multimap_count_pair(const c_hash_multimap *const _hash_multimap,
+                                  const void *const _key,
+                                  const void *const _data)
+{
+    if (_hash_multimap == NULL)
+    {
+        return 0;
+    }
+    if (_key == NULL)
+    {
+        return 0;
+    }
+    if (_data == NULL)
+    {
+        return 0;
+    }
+
+    if (_hash_multimap->nodes_count == 0)
+    {
+        return 0;
+    }
+
+    // Неприведенный хэш ключа.
+    const size_t k_hash = _hash_multimap->hash_key(_key);
+
+    // Приведенный хэш ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
+
+    if (_hash_multimap->slots[presented_k_hash] != NULL)
+    {
+        const c_hash_multimap_h_chain *select_h_chain = _hash_multimap->slots[presented_k_hash];
+        while (select_h_chain != NULL)
+        {
+            if (select_h_chain->k_hash == k_hash)
+            {
+                const c_hash_multimap_k_chain *select_k_chain = select_h_chain->head;
+                while (select_k_chain != NULL)
+                {
+                    if (_hash_multimap->comp_key(select_k_chain->head->key, _key) > 0)
+                    {
+                        size_t count = 0;
+                        const c_hash_multimap_node *select_node = select_k_chain->head;
+                        while (select_node != NULL)
+                        {
+                            if (_hash_multimap->comp_data(select_node->data, _data) > 0)
+                            {
+                                ++count;
+                            }
+                            select_node = select_node->next_node;
+                        }
+                        return count;
+                    }
+                    select_k_chain = select_k_chain->next_k_chain;
+                }
+            }
+            select_h_chain = select_h_chain->next_h_chain;
+        }
+    }
+
+    return 0;
+}
