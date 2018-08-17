@@ -165,7 +165,7 @@ ptrdiff_t c_hash_multimap_clear(c_hash_multimap *const _hash_multimap,
 
     size_t count = _hash_multimap->chains_count;
 
-    // Макросы дублирования кода для избавления от првоерок в циклах.
+    // Макросы дублирования кода для избавления от проверок в циклах.
 
     // Открытие циклов.
     #define C_HASH_MULTIMAP_CLEAR_BEGIN\
