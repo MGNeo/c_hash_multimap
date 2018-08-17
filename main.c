@@ -151,8 +151,8 @@ int main(int argc, char **argv)
         // А так же количество пар с каждым ключом.
         for (size_t k = 0; k < 3; ++k)
         {
-            const ptrdiff_t have = c_hash_multimap_check_key(hash_multimap, keys[k]);
-            const size_t count = c_hash_multimap_count_key(hash_multimap, keys[k]);
+            const ptrdiff_t have = c_hash_multimap_key_check(hash_multimap, keys[k]);
+            const size_t count = c_hash_multimap_key_count(hash_multimap, keys[k]);
             printf("[%s], have/count: %Id/%Iu\n", keys[k], have, count);
         }
         printf("\n");
@@ -162,12 +162,16 @@ int main(int argc, char **argv)
         {
             for (float d = 0.f; d < 10.f; d += 1.f)
             {
-                const ptrdiff_t have = c_hash_multimap_check_pair(hash_multimap, keys[k], &d);
-                const size_t count = c_hash_multimap_count_pair(hash_multimap, keys[k], &d);
+                const ptrdiff_t have = c_hash_multimap_pair_check(hash_multimap, keys[k], &d);
+                const size_t count = c_hash_multimap_pair_count(hash_multimap, keys[k], &d);
                 printf("[%s, %f], have/count: %Id/%Iu\n", keys[k], d, have, count);
             }
         }
 
+        // Покажем общую информацию о хэш-мультиотображении.
+        printf("slots_count: %Iu\n", c_hash_multimap_slots_count(hash_multimap));
+        printf("unique_keys_count: %Iu\n", c_hash_multimap_unique_keys_count(hash_multimap));
+        printf("pairs_count: %Iu\n", c_hash_multimap_pairs_count(hash_multimap));
         // Удаление хэш-мультиотображения.
         c_hash_multimap_delete(hash_multimap, NULL, del_data_f);
 

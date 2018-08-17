@@ -55,7 +55,6 @@ struct s_c_hash_multimap
            chains_count,
            nodes_count;
 
-
     float max_load_factor;
 
     c_hash_multimap_chain **slots;
@@ -543,6 +542,8 @@ ptrdiff_t c_hash_multimap_erase(c_hash_multimap *const _hash_multimap,
                     {
                         if (_hash_multimap->comp_data(select_node->data, _data) > 0)
                         {
+                            // Нашли требуемый узел.
+
                             // Ампутируем узел из цепочки.
                             if (prev_node == NULL)
                             {
@@ -554,6 +555,7 @@ ptrdiff_t c_hash_multimap_erase(c_hash_multimap *const _hash_multimap,
                             // Уменьшаем счетчик узлов выделенной цепочки.
                             --select_chain->nodes_count;
                             // Уменьшаем счетчик узлов хэш-мультиотображения.
+                            --_hash_multimap->nodes_count;
 
                             // Если задана функция удаления для ключа.
                             if (_del_key != NULL)
@@ -805,7 +807,7 @@ ptrdiff_t c_hash_multimap_for_each(c_hash_multimap *const _hash_multimap,
 // Если есть, возвращает > 0.
 // Если нет, возвращает 0.
 // В случае ошибки возвращает < 0.
-ptrdiff_t c_hash_multimap_check_key(const c_hash_multimap *const _hash_multimap,
+ptrdiff_t c_hash_multimap_key_check(const c_hash_multimap *const _hash_multimap,
                                     const void *const _key)
 {
     if (_hash_multimap == NULL)
@@ -849,7 +851,7 @@ ptrdiff_t c_hash_multimap_check_key(const c_hash_multimap *const _hash_multimap,
 
 // Возвращает количество пар с заданным ключом в хэш-мультиотображении.
 // В случае ошибки возвращает 0.
-size_t c_hash_multimap_count_key(const c_hash_multimap *const _hash_multimap,
+size_t c_hash_multimap_key_count(const c_hash_multimap *const _hash_multimap,
                                  const void *const _key)
 {
     if (_hash_multimap == NULL)
@@ -896,7 +898,7 @@ size_t c_hash_multimap_count_key(const c_hash_multimap *const _hash_multimap,
 // В случае наличия пары возвращает > 0.
 // В случае отсутствия пары возвращает 0.
 // В случае ошибки возвращает < 0.
-ptrdiff_t c_hash_multimap_check_pair(const c_hash_multimap *const _hash_multimap,
+ptrdiff_t c_hash_multimap_pair_check(const c_hash_multimap *const _hash_multimap,
                                      const void *const _key,
                                      const void *const _data)
 {
@@ -952,7 +954,7 @@ ptrdiff_t c_hash_multimap_check_pair(const c_hash_multimap *const _hash_multimap
 
 // Возвращает количество пар с заданным ключем и данными.
 // В случае ошибки возвращает 0.
-size_t c_hash_multimap_count_pair(const c_hash_multimap *const _hash_multimap,
+size_t c_hash_multimap_pair_count(const c_hash_multimap *const _hash_multimap,
                                   const void *const _key,
                                   const void *const _data)
 {
@@ -1022,7 +1024,7 @@ size_t c_hash_multimap_slots_count(const c_hash_multimap *const _hash_multimap)
 
 // Возвращает количество цепочек в хэш-мультимножестве.
 // В случае ошибки возвращает 0.
-size_t c_hash_multimap_chains_count(const c_hash_multimap *const _hash_multimap)
+size_t c_hash_multimap_unique_keys_count(const c_hash_multimap *const _hash_multimap)
 {
     if (_hash_multimap == NULL)
     {
@@ -1034,7 +1036,7 @@ size_t c_hash_multimap_chains_count(const c_hash_multimap *const _hash_multimap)
 
 // Возвращает количество узлов в хэш-мультимножестве.
 // В случае ошибки возвращает 0.
-size_t c_hash_multimap_nodes_count(const c_hash_multimap *const _hash_multimap)
+size_t c_hash_multimap_pairs_count(const c_hash_multimap *const _hash_multimap)
 {
     if (_hash_multimap == NULL)
     {
