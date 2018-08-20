@@ -1010,6 +1010,94 @@ size_t c_hash_multimap_pair_count(const c_hash_multimap *const _hash_multimap,
     return 0;
 }
 
+// Возвращает массив с указателями на все данные, связанные с заданным ключом.
+// Массив "нультерминирован", последним указателем является NULL.
+// Если в хэш-мультиотображении нет пар с заданным ключом, или если произошла ошибка, функция возвращает NULL.
+// Возвращаемый массив необходимо удалять при помощи free().
+void** c_hash_multimap_datas(c_hash_multimap *const _hash_multimap,
+                             const void *const _key)
+{
+    if (_hash_multimap == NULL)
+    {
+        return NULL;
+    }
+    if (_key == NULL)
+    {
+        return NULL;
+    }
+    if (_hash_multimap->nodes_count == 0)
+    {
+        return NULL;
+    }
+
+    // Неприведенный хэш ключа.
+    const size_t k_hash = _hash_multimap->hash_key(_key);
+
+    // Приведенный хэш ключа.
+    const size_t presented_k_hash = k_hash % _hash_multimap->slots_count;
+
+    if (_hash_multimap->slots[presented_k_hash] != NULL)
+    {
+        // Ищем в слоте цепочку, которая хранит узлы с заданным ключом.
+        const c_hash_multimap_chain *select_chain = _hash_multimap->slots[presented_k_hash];
+        while (select_chain != NULL)
+        {
+            if (select_chain->k_hash == k_hash)
+            {
+                if (_hash_multimap->comp_key(select_chain->head->key, _key) > 0)
+                {
+                    break;
+                }
+            }
+
+            select_chain = select_chain->next_chain;
+        }
+
+        // Если в слоте есть цепочка, которая хранит узлы с заданным ключом.
+        if (select_chain != NULL)
+        {
+            // Определяем, сколько в массиве должно быть указателей.
+            const size_t datas_count = select_chain->nodes_count + 1;
+            // Контролируем переполнение.
+            if (datas_count == 0)
+            {
+                return NULL;
+            }
+            // Определяем размер массива
+            const size_t datas_size = datas_count * sizeof(void*);
+            // Контролируем переполнение.
+            if ( (datas_size == 0) ||
+                 (datas_size / datas_count != sizeof(void*)) )
+            {
+                return NULL;
+            }
+
+            // Пытаемся выделить память.
+            void **new_datas = (void**)malloc(datas_size);
+            // Контролируем успешность выделения памяти,
+            if (new_datas == NULL)
+            {
+                return NULL;
+            }
+            // Заполняем.
+            size_t index = 0;
+            const c_hash_multimap_node *select_node = select_chain->head;
+            while (select_node != NULL)
+            {
+                new_datas[index] = select_node->data;
+                select_node = select_node->next_node;
+                ++index;
+            }
+            // Ставим в конце массива отметку.
+            new_datas[index] = NULL;
+
+            return new_datas;
+        }
+    }
+
+    return 0;
+}
+
 // Возвращает количество слотов хэш-мультиотображения.
 // В случае ошибки возвращает 0.
 size_t c_hash_multimap_slots_count(const c_hash_multimap *const _hash_multimap)
