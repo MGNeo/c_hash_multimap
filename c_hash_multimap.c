@@ -1,4 +1,17 @@
-﻿#include <stdlib.h>
+﻿/*
+    Файл реализации хэш-мультиотображения c_hash_multimap
+    Разработка, отладка и сборка производилась в:
+    ОС: Windows 10/x64
+    IDE: Code::Blocks 17.12
+    Компилятор: default Code::Blocks 17.12 MinGW
+    Разработчик: Глухманюк Максим
+    Эл. почта: mgneo@yandex.ru
+    Место: Российская Федерация, Самарская область, Сызрань
+    Дата: 11.04.2018
+    Лицензия: GPLv3
+*/
+
+#include <stdlib.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <memory.h>
@@ -60,26 +73,50 @@ struct s_c_hash_multimap
     c_hash_multimap_chain **slots;
 };
 
+// Если расположение задано, в него помещается код.
+static void error_set(size_t *const _error,
+                      const size_t _code)
+{
+    if (_error != NULL)
+    {
+        *_error = _code;
+    }
+}
+
 // Создание хэш-мультиотображения.
 // Позволяет создавать хэш-мультиотображение с нулем слотов.
-// В случае успеха возвращает указатель на созданное хэш-мультиотображение.
-// В случае ошибки возвращает NULL.
+// В случае ошибки возвращает NULL, и если _error != NULL, в заданное расположение помещается
+// код причины ошибки (> 0).
 c_hash_multimap *c_hash_multimap_create(size_t (*const _hash_key)(const void *const _key),
                                         size_t (*const _comp_key)(const void *const _key_a,
                                                                   const void *const _key_b),
                                         size_t (*const _comp_data)(const void *const _data_a,
                                                                    const void *const _data_b),
                                         const size_t _slots_count,
-                                        const float _max_load_factor)
+                                        const float _max_load_factor,
+                                        size_t *const _error)
 {
-    if (_hash_key == NULL) return NULL;
+    if (_hash_key == NULL)
+    {
+        error_set(_error, 1);
+        return NULL;
+    }
 
-    if (_comp_key == NULL) return NULL;
-    if (_comp_data == NULL) return NULL;
+    if (_comp_key == NULL)
+    {
+        error_set(_error, 2);
+        return NULL;
+    }
+    if (_comp_data == NULL)
+    {
+        error_set(_error, 3);
+        return NULL;
+    }
 
     if ( (_max_load_factor < C_HASH_MULTIMAP_MLF_MIN) ||
          (_max_load_factor > C_HASH_MULTIMAP_MLF_MAX) )
     {
+        error_set(_error, 4);
         return NULL;
     }
 
@@ -91,22 +128,25 @@ c_hash_multimap *c_hash_multimap_create(size_t (*const _hash_key)(const void *co
         if ( (new_slots_size == 0) ||
              (new_slots_size / _slots_count != sizeof(c_hash_multimap_chain*)) )
         {
+            error_set(_error, 5);
             return NULL;
         }
 
-        new_slots = (c_hash_multimap_chain**)malloc(new_slots_size);
+        new_slots = malloc(new_slots_size);
         if (new_slots == NULL)
         {
+            error_set(_error, 6);
             return NULL;
         }
 
         memset(new_slots, 0, new_slots_size);
     }
 
-    c_hash_multimap *const new_hash_multimap = (c_hash_multimap*)malloc(sizeof(c_hash_multimap));
+    c_hash_multimap *const new_hash_multimap = malloc(sizeof(c_hash_multimap));
     if (new_hash_multimap == NULL)
     {
         free(new_slots);
+        error_set(_error, 7);
         return NULL;
     }
 
@@ -296,7 +336,7 @@ ptrdiff_t c_hash_multimap_resize(c_hash_multimap *const _hash_multimap,
         }
 
         // Попытаемся выделить память под новые слоты.
-        c_hash_multimap_chain **const new_slots = (c_hash_multimap_chain**)malloc(new_slots_size);
+        c_hash_multimap_chain **const new_slots = malloc(new_slots_size);
 
         // Контроль успешности выделения памяти.
         if (new_slots == NULL)
@@ -433,7 +473,7 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
         created = 1;
 
         // Пытаемся выделить память под цепочку.
-        c_hash_multimap_chain *const new_chain = (c_hash_multimap_chain*)malloc(sizeof(c_hash_multimap_chain));
+        c_hash_multimap_chain *const new_chain = malloc(sizeof(c_hash_multimap_chain));
 
         // Если память выделить не удалось.
         if (new_chain == NULL)
@@ -458,7 +498,7 @@ ptrdiff_t c_hash_multimap_insert(c_hash_multimap *const _hash_multimap,
     }
 
     // Пытаемся выделить память под новый узел.
-    c_hash_multimap_node *const new_node = (c_hash_multimap_node*)malloc(sizeof(c_hash_multimap_node));
+    c_hash_multimap_node *const new_node = malloc(sizeof(c_hash_multimap_node));
 
     // Если память под узел выделить не удалось.
     if (new_node == NULL)
@@ -606,21 +646,26 @@ ptrdiff_t c_hash_multimap_erase(c_hash_multimap *const _hash_multimap,
 }
 
 // Удаляет из хэш-мультиотображения все пары с заданным ключом.
-// В случае успешного удаления возвращает > 0.
-// Если пар с заданным ключом в хэш-мультиотображении не оказалось, возвращает 0.
-// В случае ошибки возвращает < 0.
-ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
-                                    const void *const _key,
-                                    void (*const _del_key)(void *const _key),
-                                    void (*const _del_data)(void *const _data))
+// Возвращает количество удаленных пар.
+// В случае ошибки возвращает 0, и если _error != NULL, в заданное расположение помещается
+// код причины ошибки (> 0).
+// Поскольку функция может возвращать 0 и в случае успеха, и в случае ошибки, для детектирования ошибки
+// перед вызовом функции необходимо поместить 0 в заданное расположение ошибки.
+size_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
+                                 const void *const _key,
+                                 void (*const _del_key)(void *const _key),
+                                 void (*const _del_data)(void *const _data),
+                                 size_t *const _error)
 {
     if (_hash_multimap == NULL)
     {
-        return -1;
+        error_set(_error, 1);
+        return 0;
     }
     if (_key == NULL)
     {
-        return -2;
+        error_set(_error, 2);
+        return 0;
     }
 
     if (_hash_multimap->nodes_count == 0)
@@ -673,9 +718,11 @@ ptrdiff_t c_hash_multimap_erase_all(c_hash_multimap *const _hash_multimap,
                     --_hash_multimap->chains_count;\
                     /* Уменьшаем счетчик узлов хэш-мультиотображения на количество узлов удаляемой цепочки */\
                     _hash_multimap->nodes_count -= select_chain->nodes_count;\
+                    /* Запоминаем количество удаленных пар. */\
+                    const size_t count = select_chain->nodes_count;\
                     /* Освобождаем память */\
                     free(select_chain);\
-                    return 1;\
+                    return count;\
                 }\
             }\
             prev_chain = select_chain;\
@@ -850,17 +897,23 @@ ptrdiff_t c_hash_multimap_key_check(const c_hash_multimap *const _hash_multimap,
 }
 
 // Возвращает количество пар с заданным ключом в хэш-мультиотображении.
-// В случае ошибки возвращает 0.
+// В случае ошибки возвращает 0, и если _error != NULL, в заданное расположение помещается
+// код причины ошибки (> 0).
+// Так как функция может возвращать 0 и в случае успеха, и в случае ошибки, для детектирования ошибки
+// перед вызовом функции необходимо поместить 0 в заданное расположение ошибки.
 size_t c_hash_multimap_key_count(const c_hash_multimap *const _hash_multimap,
-                                 const void *const _key)
+                                 const void *const _key,
+                                 size_t *const _error)
 {
     if (_hash_multimap == NULL)
     {
+        error_set(_error, 1);
         return 0;
     }
 
     if (_key == NULL)
     {
+        error_set(_error, 2);
         return 0;
     }
 
@@ -953,21 +1006,28 @@ ptrdiff_t c_hash_multimap_pair_check(const c_hash_multimap *const _hash_multimap
 }
 
 // Возвращает количество пар с заданным ключем и данными.
-// В случае ошибки возвращает 0.
+// В случае ошибки возвращает 0, и если _error != NULL, в заданное расположение помещается
+// код причины ошибки(> 0).
+// Так как функция может возвращать 0 и в случае успеха, и в случае ошибки, для детектирования ошибки
+// перед вызовом функции необходимо поместить 0 в заданное расположение ошибки.
 size_t c_hash_multimap_pair_count(const c_hash_multimap *const _hash_multimap,
                                   const void *const _key,
-                                  const void *const _data)
+                                  const void *const _data,
+                                  size_t *const _error)
 {
     if (_hash_multimap == NULL)
     {
+        error_set(_error, 1);
         return 0;
     }
     if (_key == NULL)
     {
+        error_set(_error, 2);
         return 0;
     }
     if (_data == NULL)
     {
+        error_set(_error, 3);
         return 0;
     }
 
@@ -1012,17 +1072,24 @@ size_t c_hash_multimap_pair_count(const c_hash_multimap *const _hash_multimap,
 
 // Возвращает массив с указателями на все данные, связанные с заданным ключом.
 // Массив "нультерминирован", последним указателем является NULL.
-// Если в хэш-мультиотображении нет пар с заданным ключом, или если произошла ошибка, функция возвращает NULL.
+// Если в хэш-мультиотображении нет пар с заданным ключом, функция возвращает NULL.
+// В случае ошибки возвращает NULL, и если _error != NULL, в заданное расположение помещается
+// код причины ошибки (> 0).
+// Так как функция может возвращать NULL и в случае успеха, и в случае ошибки, для детектирования ошибки
+// перед вызовом функции необходимо поместить 0 в заданное расположение ошибки.
 // Возвращаемый массив необходимо удалять при помощи free().
 void** c_hash_multimap_datas(c_hash_multimap *const _hash_multimap,
-                             const void *const _key)
+                             const void *const _key,
+                             size_t *const _error)
 {
     if (_hash_multimap == NULL)
     {
+        error_set(_error, 1);
         return NULL;
     }
     if (_key == NULL)
     {
+        error_set(_error, 2);
         return NULL;
     }
     if (_hash_multimap->nodes_count == 0)
@@ -1059,8 +1126,9 @@ void** c_hash_multimap_datas(c_hash_multimap *const _hash_multimap,
             // Определяем, сколько в массиве должно быть указателей.
             const size_t datas_count = select_chain->nodes_count + 1;
             // Контролируем переполнение.
-            if (datas_count == 0)
+            if (datas_count == 0)// Не, ну а вдруг...)
             {
+                error_set(_error, 3);
                 return NULL;
             }
             // Определяем размер массива
@@ -1069,14 +1137,16 @@ void** c_hash_multimap_datas(c_hash_multimap *const _hash_multimap,
             if ( (datas_size == 0) ||
                  (datas_size / datas_count != sizeof(void*)) )
             {
+                error_set(_error, 4);
                 return NULL;
             }
 
             // Пытаемся выделить память.
-            void **new_datas = (void**)malloc(datas_size);
+            void **new_datas = malloc(datas_size);
             // Контролируем успешность выделения памяти,
             if (new_datas == NULL)
             {
+                error_set(_error, 5);
                 return NULL;
             }
             // Заполняем.
@@ -1095,15 +1165,20 @@ void** c_hash_multimap_datas(c_hash_multimap *const _hash_multimap,
         }
     }
 
-    return 0;
+    return NULL;
 }
 
 // Возвращает количество слотов хэш-мультиотображения.
-// В случае ошибки возвращает 0.
-size_t c_hash_multimap_slots_count(const c_hash_multimap *const _hash_multimap)
+// В случае ошибки возвращает 0, и если _error != NULL, в заданное расположение помещается
+// код причины ошибки (> 0).
+// Так как функция может возвращать 0 и в случае успеха, и в случае ошибки, для детектирования ошибки
+// перед вызовом функций необходимо поместить 0 в заданное расположение ошибки.
+size_t c_hash_multimap_slots_count(const c_hash_multimap *const _hash_multimap,
+                                   size_t *const _error)
 {
     if (_hash_multimap == NULL)
     {
+        error_set(_error, 1);
         return 0;
     }
 
@@ -1111,11 +1186,16 @@ size_t c_hash_multimap_slots_count(const c_hash_multimap *const _hash_multimap)
 }
 
 // Возвращает количество цепочек в хэш-мультимножестве.
-// В случае ошибки возвращает 0.
-size_t c_hash_multimap_unique_keys_count(const c_hash_multimap *const _hash_multimap)
+// В случае ошибки возвращает 0, и если _error != NULL, в заданное расположение помещается
+// код причины ошибки (> 0).
+// Так как функция может возвращать 0 и в случае успеха, и в случае ошибки, для детектирования ошибки
+// перед вызовом функции необходимо поместить 0 в заданное расположение ошибки.
+size_t c_hash_multimap_unique_keys_count(const c_hash_multimap *const _hash_multimap,
+                                         size_t *const _error)
 {
     if (_hash_multimap == NULL)
     {
+        error_set(_error, 1);
         return 0;
     }
 
@@ -1123,11 +1203,16 @@ size_t c_hash_multimap_unique_keys_count(const c_hash_multimap *const _hash_mult
 }
 
 // Возвращает количество узлов в хэш-мультимножестве.
-// В случае ошибки возвращает 0.
-size_t c_hash_multimap_pairs_count(const c_hash_multimap *const _hash_multimap)
+// В случае ошибки возвращает 0, и если _error != NULL, в заданое расположение помещается
+// код причины ошибки (> 0).
+// Так как функция может возвращать 0 и в случае успеха, и в случае ошибки, для детектирования ошибки
+// перед вызовом функции необходимо поместить 0 в заданное расположение ошибки.
+size_t c_hash_multimap_pairs_count(const c_hash_multimap *const _hash_multimap,
+                                   size_t *const _error)
 {
     if (_hash_multimap == NULL)
     {
+        error_set(_error, 1);
         return 0;
     }
 
